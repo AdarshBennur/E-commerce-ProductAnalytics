@@ -379,3 +379,31 @@ body {
    FOCUS
    ═══════════════════════════════════════════════════════════════════════════ */
 *:focus-visible { outline: 2px solid rgba(79,70,229,0.50); outline-offset: 2px; border-radius: 4px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRODUCT ANALYTICS UPGRADE — NEW COMPONENT STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── KeyInsightsPanel ────────────────────────────────────────────────────── */
+.insight-row { border-radius: 10px; }
+
+/* ── MetricTooltip ───────────────────────────────────────────────────────── */
+/* Tooltip popup already styled inline; ensure the trigger sits inline */
+.metric-label { display: inline-flex; align-items: center; }
+
+/* ── DrillDownModal ──────────────────────────────────────────────────────── */
+/* Overlay + modal box styled inline; add smooth in/out for modal */
+@keyframes modalIn {
+  from { transform: scale(0.95) translateY(8px); opacity: 0; }
+  to   { transform: scale(1)    translateY(0);   opacity: 1; }
+}
+
+/* ── Series toggle buttons ───────────────────────────────────────────────── */
+/* Already styled inline with Tailwind; these reinforce hover states */
+button[data-series-toggle] {
+  transition: all 0.14s ease;
+}
+
+/* ── Annotation Reference Lines ──────────────────────────────────────────── */
+/* Recharts ReferenceLine — ensure labels don't overflow card */
+.recharts-reference-line-label { overflow: hidden; }

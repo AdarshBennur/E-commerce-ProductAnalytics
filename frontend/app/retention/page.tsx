@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { fetchRetention } from '@/lib/api'
 import type { RetentionData } from '@/lib/types'
 import { formatWeek, formatPct } from '@/lib/utils'
@@ -8,6 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { InlineChartSkeleton, KpiSkeleton } from '@/components/ui/Skeleton'
 import { ChartCard } from '@/components/ui/ChartCard'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { KeyInsightsPanel, type Insight } from '@/components/analytics/KeyInsightsPanel'
+import { MetricTooltip, METRIC_DEFINITIONS } from '@/components/analytics/MetricTooltip'
 import { Users } from 'lucide-react'
 
 const AXIS_TICK = { fontSize: 10, fill: '#94A3B8', fontWeight: 500 }
@@ -20,6 +22,56 @@ function heatBg(pct: number) {
     if (pct >= 10) return { bg: '#A5B4FC', fg: '#3730A3' }
     if (pct >   0) return { bg: '#EEF2FF', fg: '#4338CA' }
     return { bg: 'rgba(241,245,249,0.5)', fg: '#cbd5e1' }
+}
+
+function buildInsights(data: RetentionData): Insight[] {
+    const wa = data.week_averages
+    const insights: Insight[] = []
+
+    const w1 = wa.find(w => w.week_number === 1)?.avg_retention_pct
+    const w4 = wa.find(w => w.week_number === 4)?.avg_retention_pct
+    const w8 = wa.find(w => w.week_number === 8)?.avg_retention_pct
+
+    if (w1 != null) {
+        insights.push({
+            text:      `Week 1 retention averages ${w1.toFixed(1)}% — ${w1 >= 25 ? 'strong early engagement, users are returning after their first experience' : 'moderate early engagement, indicating an opportunity to improve the onboarding experience'}.`,
+            metric:    'W1 Retention',
+            trend:     w1 >= 25 ? 'up' : 'neutral',
+            badge:     w1 >= 25 ? 'Strong' : 'Moderate',
+            badgeType: w1 >= 25 ? 'positive' : 'warning',
+            highlight: true,
+        })
+    }
+
+    if (w1 != null && w4 != null) {
+        const drop = w1 - w4
+        insights.push({
+            text:      `Retention drops ${drop.toFixed(1)}pp between week 1 and week 4, from ${w1.toFixed(1)}% to ${w4.toFixed(1)}%. ${drop > 10 ? 'The sharp mid-funnel decline suggests a re-engagement opportunity around week 2–3.' : 'The gradual decline is typical — focus on week 2 nudges to flatten the curve.'}`,
+            metric:    'W1→W4 Drop',
+            trend:     drop > 10 ? 'down' : 'neutral',
+            badge:     `–${drop.toFixed(1)}pp`,
+            badgeType: drop > 15 ? 'negative' : 'warning',
+        })
+    }
+
+    const cohortCount = new Set(data.cohort_matrix.map(r => r.cohort_week)).size
+    if (cohortCount > 0) {
+        insights.push({
+            text:      `${cohortCount} weekly cohorts analysed. Week 0 captures new users acquired in that week; subsequent weeks measure their return rate.`,
+            metric:    'Cohorts',
+            trend:     'neutral',
+        })
+    }
+
+    if (w8 != null) {
+        insights.push({
+            text:      `8-week retention is ${w8.toFixed(1)}%. ${w8 > 5 ? 'Users retained at 8 weeks represent your most loyal segment.' : 'Very few users remain after 8 weeks — investing in long-term engagement programs could help.'}`,
+            metric:    'W8 Retention',
+            trend:     w8 > 5 ? 'up' : 'down',
+        })
+    }
+
+    return insights
 }
 
 export default function RetentionPage() {
@@ -42,31 +94,30 @@ export default function RetentionPage() {
     const w4 = weekAvgs.find(w => w.week_number === 4)?.avg_retention_pct
     const w8 = weekAvgs.find(w => w.week_number === 8)?.avg_retention_pct
 
+    const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
+
     return (
-        <div className="space-y-5 animate-fade-in">
+        <div className="flex gap-5 items-start animate-fade-in">
+
+        {/* ── Main content ─────────────────────────────────────── */}
+        <div className="flex-1 min-w-0 space-y-5">
 
             {/* Retention KPIs */}
             <div className="grid grid-cols-3 gap-4">
                 {loading ? Array.from({ length: 3 }).map((_, i) => <KpiSkeleton key={i} />) : <>
-                    <KpiCard label="Week 1 Retention" value={w1 != null ? formatPct(w1) : '—'} sub="Users returning after 1 week"  icon={<Users className="w-4 h-4" />} accent="blue"   />
-                    <KpiCard label="Week 4 Retention" value={w4 != null ? formatPct(w4) : '—'} sub="Active one month later"        icon={<Users className="w-4 h-4" />} accent="purple" />
-                    <KpiCard label="Week 8 Retention" value={w8 != null ? formatPct(w8) : '—'} sub="Active two months later"       icon={<Users className="w-4 h-4" />} accent="green"  />
+                    <KpiCard
+                        label="Week 1 Retention" value={w1 != null ? formatPct(w1) : '—'}
+                        sub="Users returning after 1 week"
+                        icon={<Users className="w-4 h-4" />} accent="blue"
+                        labelNode={<MetricTooltip {...METRIC_DEFINITIONS.retention} label="W1 Retention" />}
+                    />
+                    <KpiCard label="Week 4 Retention" value={w4 != null ? formatPct(w4) : '—'} sub="Active one month later"  icon={<Users className="w-4 h-4" />} accent="purple" />
+                    <KpiCard label="Week 8 Retention" value={w8 != null ? formatPct(w8) : '—'} sub="Active two months later" icon={<Users className="w-4 h-4" />} accent="green"  />
                 </>}
             </div>
 
             {/* Cohort Heatmap */}
-            <div
-                className="overflow-x-auto animate-fade-in"
-                style={{
-                    background:          'rgba(255,255,255,0.70)',
-                    backdropFilter:      'blur(20px) saturate(1.8)',
-                    WebkitBackdropFilter:'blur(20px) saturate(1.8)',
-                    border:              '1px solid rgba(255,255,255,0.78)',
-                    borderRadius:        '16px',
-                    boxShadow:           '0 4px 24px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.85)',
-                    padding:             '20px',
-                }}
-            >
+            <div className="card overflow-x-auto animate-fade-in">
                 <div className="flex items-start justify-between gap-4 mb-5">
                     <div>
                         <h3 className="section-title">Cohort Retention Heatmap</h3>
@@ -146,6 +197,19 @@ export default function RetentionPage() {
                     </ResponsiveContainer>
                 )}
             </ChartCard>
+
+        </div>{/* end main content */}
+
+        {/* ── Right insights panel ──────────────────────────────── */}
+        <aside className="hidden xl:block w-72 flex-shrink-0">
+            <div className="sticky" style={{ top: 'calc(var(--header-height, 64px) + 20px)' }}>
+                <KeyInsightsPanel
+                    insights={insights}
+                    loading={loading}
+                />
+            </div>
+        </aside>
+
         </div>
     )
 }

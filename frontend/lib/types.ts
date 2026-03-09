@@ -10,13 +10,16 @@ export interface KPIs {
 }
 
 export interface TimeseriesPoint {
-    date: string
-    dau?: number
+    date:      string
+    dau?:      number
     sessions?: number
-    views?: number
-    carts?: number
+    views?:    number
+    carts?:    number
     purchases?: number
-    revenue?: number
+    revenue?:  number
+    orders?:   number
+    aov?:      number
+    [key: string]: unknown   // allows using TimeseriesPoint as AnyRow
 }
 
 export interface OverviewData {

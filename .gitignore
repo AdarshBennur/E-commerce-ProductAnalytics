@@ -28,7 +28,7 @@ yarn-error.log*
 # ─── Data & Analytics (large files — not tracked in git) ─────────────────
 data/
 data_sample/
-analytics/
+/analytics/
 
 # ─── OS / Editor ──────────────────────────────────────────────────────────
 .DS_Store

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useFilters } from '@/lib/filter-context'
 import { fetchCategories } from '@/lib/api'
 import type { CategoryData } from '@/lib/types'
@@ -8,10 +8,68 @@ import { formatNumber, formatCurrency, formatPct } from '@/lib/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Cell } from 'recharts'
 import { InlineChartSkeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { ChartCard, ToggleGroup } from '@/components/ui/ChartCard'
+import { KeyInsightsPanel, type Insight } from '@/components/analytics/KeyInsightsPanel'
 import { Tag, TrendingUp } from 'lucide-react'
 
 const PALETTE = ['#4F46E5', '#2563EB', '#14B8A6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4']
 const AXIS_TICK = { fontSize: 10, fill: '#94A3B8', fontWeight: 500 }
+
+function buildInsights(data: CategoryData): Insight[] {
+    const { top_categories: cats, top_brands: brands, category_conversion: catCvr } = data
+    const insights: Insight[] = []
+
+    if (cats.length === 0) return insights
+
+    // Top revenue category
+    const topCat = cats[0]
+    const totalRev = cats.reduce((s, c) => s + c.revenue, 0)
+    const topCatPct = totalRev > 0 ? (topCat.revenue / totalRev * 100).toFixed(0) : '0'
+    insights.push({
+        text:      `${topCat.category} is the top revenue category, generating ${formatCurrency(topCat.revenue)} — ${topCatPct}% of total GMV across all categories.`,
+        metric:    'Top Category',
+        trend:     'up',
+        badge:     '#1 Revenue',
+        badgeType: 'highlight',
+        highlight: true,
+    })
+
+    // Best converting category
+    if (catCvr.length > 0) {
+        const bestCvr = catCvr.reduce((a, b) => a.conversion_rate > b.conversion_rate ? a : b)
+        insights.push({
+            text:      `${bestCvr.category} has the highest conversion rate at ${bestCvr.conversion_rate.toFixed(1)}% — meaning users who view these products are most likely to purchase.`,
+            metric:    'Best CVR',
+            trend:     'up',
+            badge:     'Highest CVR',
+            badgeType: 'positive',
+        })
+    }
+
+    // Long tail
+    if (cats.length >= 5) {
+        const top3Rev = cats.slice(0, 3).reduce((s, c) => s + c.revenue, 0)
+        const top3Pct = totalRev > 0 ? (top3Rev / totalRev * 100).toFixed(0) : '0'
+        insights.push({
+            text:      `The top 3 categories account for ${top3Pct}% of total revenue, indicating ${Number(top3Pct) > 70 ? 'high revenue concentration — diversifying category mix could reduce risk' : 'healthy revenue distribution across categories'}.`,
+            metric:    'Concentration',
+            trend:     Number(top3Pct) > 70 ? 'warning' : 'neutral',
+            badge:     `Top3 = ${top3Pct}%`,
+            badgeType: Number(top3Pct) > 70 ? 'warning' : 'info',
+        })
+    }
+
+    // Top brand
+    if (brands.length > 0) {
+        const topBrand = brands[0]
+        insights.push({
+            text:      `${topBrand.brand} is the leading brand with ${formatCurrency(topBrand.revenue)} revenue and a ${topBrand.conversion_rate.toFixed(1)}% conversion rate.`,
+            metric:    'Top Brand',
+            trend:     'up',
+        })
+    }
+
+    return insights
+}
 
 export default function CategoriesPage() {
     const { filters } = useFilters()
@@ -43,9 +101,13 @@ export default function CategoriesPage() {
     }))
 
     const tableItems = (rawItems ?? []).slice(0, 20)
+    const insights   = useMemo(() => (data ? buildInsights(data) : []), [data])
 
     return (
-        <div className="space-y-5 animate-fade-in">
+        <div className="flex gap-5 items-start animate-fade-in">
+
+        {/* ── Main content ─────────────────────────────────────── */}
+        <div className="flex-1 min-w-0 space-y-5">
 
             {/* Header with toggle */}
             <div className="flex items-center justify-between">
@@ -74,7 +136,7 @@ export default function CategoriesPage() {
                                 <XAxis type="number" tick={AXIS_TICK} tickFormatter={v => `$${(v/1000).toFixed(0)}K`} axisLine={false} tickLine={false} />
                                 <YAxis type="category" dataKey="name" tick={{ ...AXIS_TICK, fill: '#64748b', fontSize: 9.5 }} width={96} axisLine={false} tickLine={false} />
                                 <Tooltip formatter={(v: any) => [formatCurrency(v), 'Revenue']} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #E2E8F0', background: '#FFFFFF', boxShadow: '0 8px 24px rgba(15,23,42,0.10)' }} />
-                                <Bar dataKey="revenue" radius={[0, 8, 8, 0]}>
+                                <Bar dataKey="revenue" radius={[0, 8, 8, 0]} isAnimationActive>
                                     <LabelList dataKey="revenue" position="right" formatter={(v: any) => `$${(v/1000).toFixed(0)}K`} style={{ fontSize: 9.5, fontWeight: 700, fill: '#475569' }} />
                                     {revData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
                                 </Bar>
@@ -91,7 +153,7 @@ export default function CategoriesPage() {
                                 <XAxis type="number" tick={AXIS_TICK} tickFormatter={formatNumber} axisLine={false} tickLine={false} />
                                 <YAxis type="category" dataKey="name" tick={{ ...AXIS_TICK, fill: '#64748b', fontSize: 9.5 }} width={96} axisLine={false} tickLine={false} />
                                 <Tooltip formatter={(v: any) => [formatNumber(v), 'Purchases']} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #E2E8F0', background: '#FFFFFF', boxShadow: '0 8px 24px rgba(15,23,42,0.10)' }} />
-                                <Bar dataKey="orders" radius={[0, 8, 8, 0]}>
+                                <Bar dataKey="orders" radius={[0, 8, 8, 0]} isAnimationActive>
                                     <LabelList dataKey="orders" position="right" formatter={formatNumber} style={{ fontSize: 9.5, fontWeight: 700, fill: '#475569' }} />
                                     {revData.map((_, i) => <Cell key={i} fill={`hsl(${160 + i * 12}, 60%, ${52 - i}%)`} />)}
                                 </Bar>
@@ -103,18 +165,7 @@ export default function CategoriesPage() {
 
             {/* Detail table */}
             {loading ? <TableSkeleton rows={8} /> : (
-                <div
-                    className="overflow-x-auto animate-fade-in"
-                    style={{
-                        background:          'rgba(255,255,255,0.70)',
-                        backdropFilter:      'blur(20px) saturate(1.8)',
-                        WebkitBackdropFilter:'blur(20px) saturate(1.8)',
-                        border:              '1px solid rgba(255,255,255,0.78)',
-                        borderRadius:        '16px',
-                        boxShadow:           '0 4px 24px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.85)',
-                        padding:             '20px',
-                    }}
-                >
+                <div className="card overflow-x-auto animate-fade-in">
                     <div className="flex items-center gap-2 mb-5">
                         <h3 className="section-title">Detailed Breakdown</h3>
                         <span className="badge badge-neutral">{tableItems.length} {view}</span>
@@ -158,6 +209,19 @@ export default function CategoriesPage() {
                     </table>
                 </div>
             )}
+
+        </div>{/* end main content */}
+
+        {/* ── Right insights panel ──────────────────────────────── */}
+        <aside className="hidden xl:block w-72 flex-shrink-0">
+            <div className="sticky" style={{ top: 'calc(var(--header-height, 64px) + 20px)' }}>
+                <KeyInsightsPanel
+                    insights={insights}
+                    loading={loading}
+                />
+            </div>
+        </aside>
+
         </div>
     )
 }
