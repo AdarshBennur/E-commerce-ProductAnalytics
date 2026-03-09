@@ -107,12 +107,12 @@ export default function BehaviorPage() {
     const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
 
     return (
-        <div className="space-y-5 animate-fade-in">
+        <div className="flex gap-5 items-start animate-fade-in">
 
-            {/* Key Insights */}
-            <KeyInsightsPanel insights={insights} loading={loading} compact />
+        {/* ── Main content ─────────────────────────────────────── */}
+        <div className="flex-1 min-w-0 space-y-5">
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-4">
                 {loading ? Array.from({ length: 6 }).map((_, i) => <KpiSkeleton key={i} />) : <>
                     <KpiCard label="Avg Duration"    value={stats?.avg_session_duration_min != null ? `${stats.avg_session_duration_min.toFixed(1)}m` : '—'} sub="Per session"         icon={<Clock            className="w-4 h-4" />} accent="blue"   />
                     <KpiCard label="Events/Session"  value={stats?.avg_events_per_session?.toFixed(1) ?? '—'}                                               sub="Interactions"         icon={<MousePointerClick className="w-4 h-4" />} accent="purple" />
@@ -243,6 +243,20 @@ export default function BehaviorPage() {
                     </div>
                 )}
             </div>
+
+        </div>{/* end main content */}
+
+        {/* ── Right insights panel ──────────────────────────────── */}
+        <aside className="hidden xl:block w-72 flex-shrink-0">
+            <div className="sticky" style={{ top: 'calc(var(--header-height, 64px) + 20px)' }}>
+                <KeyInsightsPanel
+                    insights={insights}
+                    loading={loading}
+                    maxHeight={520}
+                />
+            </div>
+        </aside>
+
         </div>
     )
 }

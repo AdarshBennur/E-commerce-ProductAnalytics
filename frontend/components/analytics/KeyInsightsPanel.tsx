@@ -20,7 +20,8 @@ interface KeyInsightsPanelProps {
     title?:     string
     loading?:   boolean
     className?: string
-    compact?:   boolean         // 2-col layout in compact mode
+    compact?:   boolean         // 2-col layout in compact mode (unused in panel mode)
+    maxHeight?: number          // px — enables scrolling when there are many insights
 }
 
 const TREND_ICON = {
@@ -106,10 +107,10 @@ function InsightSkeleton() {
 
 export function KeyInsightsPanel({
     insights,
-    title   = 'Key Insights',
-    loading = false,
+    title     = 'Key Insights',
+    loading   = false,
     className,
-    compact = false,
+    maxHeight,
 }: KeyInsightsPanelProps) {
     return (
         <div className={clsx('card animate-fade-in', className)}>
@@ -120,29 +121,32 @@ export function KeyInsightsPanel({
                 </div>
                 <h3 className="section-title">{title}</h3>
                 <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Auto-generated
+                    Auto
                 </span>
             </div>
 
             {/* Insights list */}
-            {loading ? (
-                <div className={clsx('space-y-1', compact && 'grid grid-cols-2 gap-1 space-y-0')}>
-                    {[1, 2, 3].map(i => <InsightSkeleton key={i} />)}
-                </div>
-            ) : insights.length === 0 ? (
-                <div className="flex items-center gap-2 p-3 text-slate-400 text-xs">
-                    <Info className="w-4 h-4 flex-shrink-0" />
-                    <span>Not enough data to generate insights.</span>
-                </div>
-            ) : (
-                <div className={clsx(
-                    compact ? 'grid grid-cols-1 md:grid-cols-2 gap-1' : 'space-y-1',
-                )}>
-                    {insights.map((insight, i) => (
-                        <InsightRow key={i} insight={insight} />
-                    ))}
-                </div>
-            )}
+            <div
+                className={maxHeight ? 'overflow-y-auto' : undefined}
+                style={maxHeight ? { maxHeight } : undefined}
+            >
+                {loading ? (
+                    <div className="space-y-1">
+                        {[1, 2, 3].map(i => <InsightSkeleton key={i} />)}
+                    </div>
+                ) : insights.length === 0 ? (
+                    <div className="flex items-center gap-2 p-3 text-slate-400 text-xs">
+                        <Info className="w-4 h-4 flex-shrink-0" />
+                        <span>Not enough data to generate insights.</span>
+                    </div>
+                ) : (
+                    <div className="space-y-1">
+                        {insights.map((insight, i) => (
+                            <InsightRow key={i} insight={insight} />
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

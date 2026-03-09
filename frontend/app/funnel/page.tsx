@@ -141,10 +141,10 @@ export default function FunnelPage() {
     const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
 
     return (
-        <div className="space-y-5 animate-fade-in">
+        <div className="flex gap-5 items-start animate-fade-in">
 
-            {/* Key Insights */}
-            <KeyInsightsPanel insights={insights} loading={loading} compact />
+        {/* ── Main content ─────────────────────────────────────── */}
+        <div className="flex-1 min-w-0 space-y-5">
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {loading ? Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />) : <>
@@ -264,6 +264,20 @@ export default function FunnelPage() {
                     </div>
                 )}
             </DrillDownModal>
+
+        </div>{/* end main content */}
+
+        {/* ── Right insights panel ──────────────────────────────── */}
+        <aside className="hidden xl:block w-72 flex-shrink-0">
+            <div className="sticky" style={{ top: 'calc(var(--header-height, 64px) + 20px)' }}>
+                <KeyInsightsPanel
+                    insights={insights}
+                    loading={loading}
+                    maxHeight={520}
+                />
+            </div>
+        </aside>
+
         </div>
     )
 }
