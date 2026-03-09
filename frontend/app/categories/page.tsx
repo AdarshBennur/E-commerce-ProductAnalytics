@@ -218,7 +218,6 @@ export default function CategoriesPage() {
                 <KeyInsightsPanel
                     insights={insights}
                     loading={loading}
-                    maxHeight={520}
                 />
             </div>
         </aside>

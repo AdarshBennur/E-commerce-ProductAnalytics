@@ -419,7 +419,6 @@ export default function OverviewPage() {
                 <KeyInsightsPanel
                     insights={insights}
                     loading={loading}
-                    maxHeight={520}
                 />
             </div>
         </aside>

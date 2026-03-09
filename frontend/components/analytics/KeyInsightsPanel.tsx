@@ -20,8 +20,6 @@ interface KeyInsightsPanelProps {
     title?:     string
     loading?:   boolean
     className?: string
-    compact?:   boolean         // 2-col layout in compact mode (unused in panel mode)
-    maxHeight?: number          // px — enables scrolling when there are many insights
 }
 
 const TREND_ICON = {
@@ -110,7 +108,6 @@ export function KeyInsightsPanel({
     title     = 'Key Insights',
     loading   = false,
     className,
-    maxHeight,
 }: KeyInsightsPanelProps) {
     return (
         <div className={clsx('card animate-fade-in', className)}>
@@ -125,28 +122,23 @@ export function KeyInsightsPanel({
                 </span>
             </div>
 
-            {/* Insights list */}
-            <div
-                className={maxHeight ? 'overflow-y-auto' : undefined}
-                style={maxHeight ? { maxHeight } : undefined}
-            >
-                {loading ? (
-                    <div className="space-y-1">
-                        {[1, 2, 3].map(i => <InsightSkeleton key={i} />)}
-                    </div>
-                ) : insights.length === 0 ? (
-                    <div className="flex items-center gap-2 p-3 text-slate-400 text-xs">
-                        <Info className="w-4 h-4 flex-shrink-0" />
-                        <span>Not enough data to generate insights.</span>
-                    </div>
-                ) : (
-                    <div className="space-y-1">
-                        {insights.map((insight, i) => (
-                            <InsightRow key={i} insight={insight} />
-                        ))}
-                    </div>
-                )}
-            </div>
+            {/* Insights list — height: auto, grows with content, no internal scroll */}
+            {loading ? (
+                <div className="space-y-1">
+                    {[1, 2, 3].map(i => <InsightSkeleton key={i} />)}
+                </div>
+            ) : insights.length === 0 ? (
+                <div className="flex items-center gap-2 p-3 text-slate-400 text-xs">
+                    <Info className="w-4 h-4 flex-shrink-0" />
+                    <span>Not enough data to generate insights.</span>
+                </div>
+            ) : (
+                <div className="space-y-1">
+                    {insights.map((insight, i) => (
+                        <InsightRow key={i} insight={insight} />
+                    ))}
+                </div>
+            )}
         </div>
     )
 }

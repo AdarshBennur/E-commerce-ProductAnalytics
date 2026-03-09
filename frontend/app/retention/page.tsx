@@ -206,7 +206,6 @@ export default function RetentionPage() {
                 <KeyInsightsPanel
                     insights={insights}
                     loading={loading}
-                    maxHeight={520}
                 />
             </div>
         </aside>
