@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useFilters } from '@/lib/filter-context'
 import { fetchFunnel } from '@/lib/api'
 import type { FunnelData } from '@/lib/types'
@@ -8,6 +8,10 @@ import { KpiCard } from '@/components/ui/KpiCard'
 import { KpiSkeleton, InlineChartSkeleton } from '@/components/ui/Skeleton'
 import { ChartCard } from '@/components/ui/ChartCard'
 import { ChartTooltip } from '@/components/ui/ChartTooltip'
+import { KeyInsightsPanel, type Insight } from '@/components/analytics/KeyInsightsPanel'
+import { MetricTooltip, METRIC_DEFINITIONS } from '@/components/analytics/MetricTooltip'
+import { DrillDownModal, ModalKpi, ModalStatRow } from '@/components/analytics/DrillDownModal'
+import { fmtPct } from '@/lib/analytics'
 import { formatNumber, formatPct, formatDate } from '@/lib/utils'
 import {
     LineChart, Line, BarChart, Bar,
@@ -17,6 +21,52 @@ import { TrendingDown, Eye, ShoppingCart, CreditCard, ArrowRight } from 'lucide-
 
 const C = { viewers: '#4F46E5', carted: '#2563EB', purchasers: '#10B981' }
 const AXIS_TICK = { fontSize: 10, fill: '#94A3B8', fontWeight: 500 }
+
+function buildInsights(data: FunnelData): Insight[] {
+    const { funnel, top_categories } = data
+    const insights: Insight[] = []
+
+    // Largest drop-off
+    const vtcDrop = 100 - funnel.view_to_cart_pct
+    insights.push({
+        text:      `The largest drop-off is between product view and add-to-cart — ${fmtPct(vtcDrop)} of viewers leave without engaging further.`,
+        metric:    'View → Cart',
+        trend:     'down',
+        badge:     'Key Drop-off',
+        badgeType: 'negative',
+        highlight: true,
+    })
+
+    // Cart to purchase strength
+    insights.push({
+        text:      `Cart-to-purchase conversion is ${fmtPct(funnel.cart_to_purchase_pct)}, indicating ${funnel.cart_to_purchase_pct > 30 ? 'strong purchase intent — users who add to cart are very likely to buy' : 'moderate checkout completion — optimising the cart experience could lift revenue'}.`,
+        metric:    'Cart → Purchase',
+        trend:     funnel.cart_to_purchase_pct > 30 ? 'up' : 'neutral',
+        badge:     funnel.cart_to_purchase_pct > 30 ? 'Strong CVR' : 'Opportunity',
+        badgeType: funnel.cart_to_purchase_pct > 30 ? 'positive' : 'warning',
+    })
+
+    // Overall CVR
+    insights.push({
+        text:      `Only ${fmtPct(funnel.overall_conversion_pct)} of all viewers complete a purchase. Closing the top-of-funnel gap is the single biggest growth lever.`,
+        metric:    'Overall CVR',
+        trend:     'neutral',
+    })
+
+    // Top converting category
+    if (top_categories.length > 0) {
+        const best = top_categories.reduce((a, b) => a.conversion_rate > b.conversion_rate ? a : b)
+        insights.push({
+            text:      `${best.category_main} is the highest-converting category at ${fmtPct(best.conversion_rate)} CVR — a strong signal of category-product fit.`,
+            metric:    'Top Category',
+            trend:     'up',
+            badge:     'Best CVR',
+            badgeType: 'positive',
+        })
+    }
+
+    return insights
+}
 
 function FunnelViz({ data }: { data: FunnelData['funnel'] }) {
     const stages = [
@@ -67,8 +117,9 @@ function FunnelViz({ data }: { data: FunnelData['funnel'] }) {
 
 export default function FunnelPage() {
     const { filters } = useFilters()
-    const [data, setData]       = useState<FunnelData | null>(null)
+    const [data, setData]     = useState<FunnelData | null>(null)
     const [loading, setLoading] = useState(true)
+    const [drillStage, setDrillStage] = useState<null | 'view-cart' | 'cart-purchase'>(null)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -87,16 +138,26 @@ export default function FunnelPage() {
     const funnel  = data?.funnel
     const ts      = data?.timeseries    ?? []
     const topCats = data?.top_categories ?? []
+    const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
 
     return (
         <div className="space-y-5 animate-fade-in">
 
+            {/* Key Insights */}
+            <KeyInsightsPanel insights={insights} loading={loading} compact />
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {loading ? Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />) : <>
-                    <KpiCard label="Unique Viewers" value={formatNumber(funnel?.viewers)}                  sub="Saw at least 1 product" icon={<Eye          className="w-4 h-4" />} accent="blue"   />
-                    <KpiCard label="Added to Cart"  value={formatNumber(funnel?.carted)}                   sub="Proceeded to cart"      icon={<ShoppingCart className="w-4 h-4" />} accent="purple" />
-                    <KpiCard label="Converted"      value={formatNumber(funnel?.purchasers)}               sub="Completed purchase"     icon={<CreditCard   className="w-4 h-4" />} accent="green"  />
-                    <KpiCard label="Overall CVR"    value={formatPct(funnel?.overall_conversion_pct)}      sub="View → Purchase"        icon={<TrendingDown className="w-4 h-4" />} accent="orange" />
+                    <KpiCard label="Unique Viewers" value={formatNumber(funnel?.viewers)}             sub="Saw at least 1 product" icon={<Eye          className="w-4 h-4" />} accent="blue"   />
+                    <KpiCard label="Added to Cart"  value={formatNumber(funnel?.carted)}              sub="Proceeded to cart"      icon={<ShoppingCart className="w-4 h-4" />} accent="purple" />
+                    <KpiCard label="Converted"      value={formatNumber(funnel?.purchasers)}          sub="Completed purchase"     icon={<CreditCard   className="w-4 h-4" />} accent="green"  />
+                    <KpiCard
+                        label="Overall CVR"
+                        value={formatPct(funnel?.overall_conversion_pct)}
+                        sub="View → Purchase"
+                        icon={<TrendingDown className="w-4 h-4" />} accent="orange"
+                        labelNode={<MetricTooltip {...METRIC_DEFINITIONS.conversionRate} />}
+                    />
                 </>}
             </div>
 
@@ -107,15 +168,22 @@ export default function FunnelPage() {
                         <FunnelViz data={funnel} />
                         <div className="mt-5 pt-4 border-t border-slate-200 grid grid-cols-2 gap-3">
                             {[
-                                { label: 'View → Cart',      val: funnel.view_to_cart_pct,      from: <Eye className="w-3 h-3" />,          to: <ShoppingCart className="w-3 h-3" />, color: '#4F46E5', bg: 'rgba(79,70,229,0.06)',  border: 'rgba(79,70,229,0.14)' },
-                                { label: 'Cart → Purchase',  val: funnel.cart_to_purchase_pct,  from: <ShoppingCart className="w-3 h-3" />, to: <CreditCard className="w-3 h-3" />,   color: '#10b981', bg: 'rgba(16,185,129,0.07)',  border: 'rgba(16,185,129,0.15)' },
+                                { id: 'view-cart' as const,      label: 'View → Cart',     val: funnel.view_to_cart_pct,     from: <Eye className="w-3 h-3" />,          to: <ShoppingCart className="w-3 h-3" />, color: '#4F46E5', bg: 'rgba(79,70,229,0.06)',  border: 'rgba(79,70,229,0.14)' },
+                                { id: 'cart-purchase' as const,  label: 'Cart → Purchase', val: funnel.cart_to_purchase_pct, from: <ShoppingCart className="w-3 h-3" />, to: <CreditCard className="w-3 h-3" />,   color: '#10b981', bg: 'rgba(16,185,129,0.07)',  border: 'rgba(16,185,129,0.15)' },
                             ].map(item => (
-                                <div key={item.label} className="rounded-2xl p-4 text-center" style={{ background: item.bg, border: `1px solid ${item.border}` }}>
+                                <div
+                                    key={item.label}
+                                    className="rounded-2xl p-4 text-center cursor-pointer hover:scale-[1.02] transition-transform"
+                                    style={{ background: item.bg, border: `1px solid ${item.border}` }}
+                                    onClick={() => setDrillStage(item.id)}
+                                    title="Click for stage breakdown"
+                                >
                                     <div className="flex items-center justify-center gap-1.5 mb-1.5 opacity-60" style={{ color: item.color }}>
                                         {item.from}<ArrowRight className="w-2.5 h-2.5" />{item.to}
                                     </div>
                                     <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: item.color }}>{item.label}</p>
                                     <p className="text-2xl font-extrabold" style={{ color: item.color }}>{formatPct(item.val)}</p>
+                                    <p className="text-[9px] text-slate-400 mt-1">Click for breakdown →</p>
                                 </div>
                             ))}
                         </div>
@@ -131,9 +199,9 @@ export default function FunnelPage() {
                                 <YAxis                 tick={AXIS_TICK} tickFormatter={formatNumber} width={44}     axisLine={false} tickLine={false} />
                                 <Tooltip content={<ChartTooltip />} />
                                 <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                                <Line type="monotone" dataKey="viewers"    name="Viewers"    stroke={C.viewers}    strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
-                                <Line type="monotone" dataKey="carted"     name="Carted"     stroke={C.carted}     strokeWidth={2}   dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
-                                <Line type="monotone" dataKey="purchasers" name="Purchasers" stroke={C.purchasers} strokeWidth={2}   dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                                <Line type="monotone" dataKey="viewers"    name="Viewers"    stroke={C.viewers}    strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} isAnimationActive />
+                                <Line type="monotone" dataKey="carted"     name="Carted"     stroke={C.carted}     strokeWidth={2}   dot={false} activeDot={{ r: 4, strokeWidth: 0 }} isAnimationActive />
+                                <Line type="monotone" dataKey="purchasers" name="Purchasers" stroke={C.purchasers} strokeWidth={2}   dot={false} activeDot={{ r: 4, strokeWidth: 0 }} isAnimationActive />
                             </LineChart>
                         </ResponsiveContainer>
                     )}
@@ -157,6 +225,45 @@ export default function FunnelPage() {
                     </ResponsiveContainer>
                 )}
             </ChartCard>
+
+            {/* Stage Drill-Down Modal */}
+            <DrillDownModal
+                open={drillStage !== null}
+                onClose={() => setDrillStage(null)}
+                title={drillStage === 'view-cart' ? 'View → Cart Stage Analysis' : 'Cart → Purchase Stage Analysis'}
+                subtitle="Detailed breakdown of this conversion stage"
+            >
+                {funnel && (
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-3">
+                            {drillStage === 'view-cart' ? <>
+                                <ModalKpi label="Viewers"        value={formatNumber(funnel.viewers)} sub="Entered funnel" />
+                                <ModalKpi label="Added to Cart"  value={formatNumber(funnel.carted)}  sub="Proceeded" accent="#2563EB" />
+                                <ModalKpi label="View→Cart CVR"  value={fmtPct(funnel.view_to_cart_pct)} sub="Stage conversion" accent="#4F46E5" />
+                                <ModalKpi label="Drop-off"       value={formatNumber(funnel.viewers - funnel.carted)} sub="Lost at this stage" accent="#EF4444" />
+                            </> : <>
+                                <ModalKpi label="Added to Cart"  value={formatNumber(funnel.carted)}       sub="Entered checkout" />
+                                <ModalKpi label="Purchased"      value={formatNumber(funnel.purchasers)}   sub="Completed"       accent="#10B981" />
+                                <ModalKpi label="Cart→Buy CVR"   value={fmtPct(funnel.cart_to_purchase_pct)} sub="Stage conversion" accent="#4F46E5" />
+                                <ModalKpi label="Abandoned"      value={formatNumber(funnel.carted - funnel.purchasers)} sub="Cart abandonment" accent="#EF4444" />
+                            </>}
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Top Converting Categories</p>
+                            {topCats.slice(0, 6).map((cat, i) => (
+                                <ModalStatRow
+                                    key={cat.category_main}
+                                    rank={i + 1}
+                                    label={cat.category_main}
+                                    value={`${cat.conversion_rate.toFixed(1)}% CVR`}
+                                    sub={`${formatNumber(cat.viewers)} viewers → ${formatNumber(cat.purchasers)} buyers`}
+                                    color={`hsl(${245 - i * 15}, 70%, 58%)`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </DrillDownModal>
         </div>
     )
 }
