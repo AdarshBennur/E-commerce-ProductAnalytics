@@ -13,6 +13,8 @@ import { MetricTooltip, METRIC_DEFINITIONS } from '@/components/analytics/Metric
 import { DrillDownModal, ModalKpi, ModalStatRow } from '@/components/analytics/DrillDownModal'
 import { SpikeAnnotations, AnnotationLegend } from '@/components/analytics/ChartAnnotations'
 import { computeTrend, detectSpikes, trendLabel, maxPoint, fmtDate, fmtPct } from '@/lib/analytics'
+import { useInsights } from '@/lib/use-insights'
+import { ProductRecommendations } from '@/components/analytics/ProductRecommendations'
 import { formatNumber, formatCurrency, formatPct, formatDate } from '@/lib/utils'
 import {
     AreaChart, Area, LineChart, Line,
@@ -105,16 +107,23 @@ export default function OverviewPage() {
             setData(await fetchOverview({
                 start_date: filters.startDate || undefined,
                 end_date:   filters.endDate   || undefined,
+                segment:    filters.segment   || undefined,
             }))
         } catch (e: any) { setError(e.message) }
         finally { setLoading(false) }
-    }, [filters.startDate, filters.endDate])
+    }, [filters.startDate, filters.endDate, filters.segment])
 
     useEffect(() => { load() }, [load])
 
-    const kpis    = data?.kpis
-    const ts      = data?.timeseries ?? []
-    const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const kpis          = data?.kpis
+    const ts            = data?.timeseries ?? []
+    const staticInsights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const { insights }  = useInsights({
+        startDate:      filters.startDate || undefined,
+        endDate:        filters.endDate   || undefined,
+        segment:        filters.segment   || undefined,
+        staticInsights,
+    })
     const spikes   = useMemo(() => detectSpikes(ts, 'dau'), [ts])
 
     // Trend computations for KPI cards
@@ -413,12 +422,16 @@ export default function OverviewPage() {
 
         </div>{/* end main content */}
 
-        {/* ── Right insights panel ──────────────────────────────── */}
+        {/* ── Right panel: insights + recommendations ────────────── */}
         <aside className="hidden xl:block w-72 flex-shrink-0">
-            <div className="sticky" style={{ top: 'calc(var(--header-height, 64px) + 20px)' }}>
+            <div className="sticky space-y-4" style={{ top: 'calc(var(--header-height, 64px) + 20px)' }}>
                 <KeyInsightsPanel
                     insights={insights}
                     loading={loading}
+                />
+                <ProductRecommendations
+                    startDate={filters.startDate || undefined}
+                    endDate={filters.endDate || undefined}
                 />
             </div>
         </aside>

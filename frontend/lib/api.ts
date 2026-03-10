@@ -3,7 +3,7 @@
  * All paths proxy through Next.js rewrites → FastAPI on port 8000.
  */
 
-import type { OverviewData, FunnelData, RetentionData, BehaviorData, CategoryData, RevenueData, FiltersData } from './types'
+import type { OverviewData, FunnelData, RetentionData, BehaviorData, CategoryData, RevenueData, FiltersData, InsightItem, RecommendationItem } from './types'
 
 const BASE = '/api'
 
@@ -54,4 +54,16 @@ export async function fetchRevenue(params: QueryParams = {}): Promise<RevenueDat
 
 export async function fetchFilters(): Promise<FiltersData> {
     return fetcher<FiltersData>(buildUrl('/filters'))
+}
+
+export async function fetchInsights(params: QueryParams = {}): Promise<{ insights: InsightItem[]; count: number }> {
+    return fetcher(buildUrl('/insights', params))
+}
+
+export async function fetchRecommendations(params: QueryParams = {}): Promise<{ recommendations: RecommendationItem[]; count: number }> {
+    return fetcher(buildUrl('/recommendations', params))
+}
+
+export async function fetchSegments(): Promise<{ segments: { id: string; label: string; description: string }[]; profiles: unknown[] }> {
+    return fetcher(buildUrl('/segments'))
 }

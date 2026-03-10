@@ -11,6 +11,8 @@ import { KpiCard } from '@/components/ui/KpiCard'
 import { KeyInsightsPanel, type Insight } from '@/components/analytics/KeyInsightsPanel'
 import { MetricTooltip, METRIC_DEFINITIONS } from '@/components/analytics/MetricTooltip'
 import { fmtPct } from '@/lib/analytics'
+import { useInsights } from '@/lib/use-insights'
+import { useFilters } from '@/lib/filter-context'
 import { Clock, MousePointerClick, Users, Activity, ShoppingBag, TrendingUp } from 'lucide-react'
 
 const PALETTE = ['#4F46E5', '#2563EB', '#14B8A6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4']
@@ -81,6 +83,7 @@ function buildInsights(data: BehaviorData): Insight[] {
 }
 
 export default function BehaviorPage() {
+    const { filters }           = useFilters()
     const [data, setData]       = useState<BehaviorData | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -104,7 +107,11 @@ export default function BehaviorPage() {
         session_count: s.user_count,
     }))
 
-    const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const staticInsights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const { insights }   = useInsights({
+        segment:        filters.segment || undefined,
+        staticInsights,
+    })
 
     return (
         <div className="flex gap-5 items-start animate-fade-in">

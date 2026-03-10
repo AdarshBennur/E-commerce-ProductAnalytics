@@ -12,6 +12,7 @@ import { KeyInsightsPanel, type Insight } from '@/components/analytics/KeyInsigh
 import { MetricTooltip, METRIC_DEFINITIONS } from '@/components/analytics/MetricTooltip'
 import { DrillDownModal, ModalKpi, ModalStatRow } from '@/components/analytics/DrillDownModal'
 import { fmtPct } from '@/lib/analytics'
+import { useInsights } from '@/lib/use-insights'
 import { formatNumber, formatPct, formatDate } from '@/lib/utils'
 import {
     LineChart, Line, BarChart, Bar,
@@ -129,6 +130,7 @@ export default function FunnelPage() {
                 end_date:   filters.endDate   || undefined,
                 category:   filters.category  || undefined,
                 brand:      filters.brand     || undefined,
+                segment:    filters.segment   || undefined,
             }))
         } finally { setLoading(false) }
     }, [filters])
@@ -138,7 +140,13 @@ export default function FunnelPage() {
     const funnel  = data?.funnel
     const ts      = data?.timeseries    ?? []
     const topCats = data?.top_categories ?? []
-    const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const staticInsights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const { insights }   = useInsights({
+        startDate:      filters.startDate || undefined,
+        endDate:        filters.endDate   || undefined,
+        segment:        filters.segment   || undefined,
+        staticInsights,
+    })
 
     return (
         <div className="flex gap-5 items-start animate-fade-in">

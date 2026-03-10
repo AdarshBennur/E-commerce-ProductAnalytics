@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/funnel", tags=["funnel"])
 def get_funnel(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
+    segment: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     brand: Optional[str] = Query(None),
 ):

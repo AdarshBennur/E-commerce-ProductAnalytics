@@ -16,6 +16,7 @@ def get_revenue(
     category: Optional[str] = Query(None),
     brand: Optional[str] = Query(None),
     granularity: str = Query("daily"),  # daily | weekly
+    segment: Optional[str] = Query(None),
 ):
     rev_tbl = table("revenue_metrics")
     dau_tbl = table("daily_active_users")

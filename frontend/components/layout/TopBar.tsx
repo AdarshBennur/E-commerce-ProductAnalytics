@@ -3,17 +3,27 @@
 import { usePathname } from 'next/navigation'
 import { useFilters } from '@/lib/filter-context'
 import { useSidebar } from '@/lib/sidebar-context'
-import { SlidersHorizontal, X, Menu, CalendarDays, ChevronDown } from 'lucide-react'
+import { SlidersHorizontal, X, Menu, CalendarDays, ChevronDown, Users } from 'lucide-react'
 import type { FiltersData } from '@/lib/types'
 
 const PAGE_META: Record<string, { title: string; sub: string }> = {
-    '/overview':   { title: 'Executive Overview',           sub: 'Platform-wide performance at a glance' },
-    '/funnel':     { title: 'Funnel Analysis',              sub: 'User conversion through purchase stages' },
-    '/retention':  { title: 'Retention & Cohorts',          sub: 'Weekly cohort retention heatmap' },
-    '/behavior':   { title: 'User Behavior',                sub: 'Session patterns and engagement signals' },
-    '/categories': { title: 'Category & Brand Performance', sub: 'Revenue, orders and conversion by segment' },
-    '/revenue':    { title: 'Revenue Analytics',            sub: 'GMV, orders and average order value' },
+    '/overview':     { title: 'Executive Overview',           sub: 'Platform-wide performance at a glance' },
+    '/funnel':       { title: 'Funnel Analysis',              sub: 'User conversion through purchase stages' },
+    '/retention':    { title: 'Retention & Cohorts',          sub: 'Weekly cohort retention heatmap' },
+    '/behavior':     { title: 'User Behavior',                sub: 'Session patterns and engagement signals' },
+    '/categories':   { title: 'Category & Brand Performance', sub: 'Revenue, orders and conversion by segment' },
+    '/revenue':      { title: 'Revenue Analytics',            sub: 'GMV, orders and average order value' },
+    '/experiments':  { title: 'Experimentation',              sub: 'A/B test results and variant performance' },
 }
+
+const SEGMENT_OPTIONS = [
+    { value: '',                 label: 'All Users'          },
+    { value: 'high_value_buyers',label: 'High-Value Buyers'  },
+    { value: 'returning_users',  label: 'Returning Users'    },
+    { value: 'new_users',        label: 'New Users'          },
+    { value: 'browse_only',      label: 'Browse-Only'        },
+    { value: 'one_time_buyers',  label: 'One-Time Buyers'    },
+]
 
 interface TopBarProps { filtersData: FiltersData }
 
@@ -23,7 +33,7 @@ export function TopBar({ filtersData }: TopBarProps) {
     const { toggle } = useSidebar()
 
     const meta = PAGE_META[pathname] ?? { title: 'Analytics', sub: '' }
-    const hasActiveFilters = !!(filters.category || filters.brand || filters.startDate || filters.endDate)
+    const hasActiveFilters = !!(filters.category || filters.brand || filters.startDate || filters.endDate || filters.segment)
 
     return (
         <header
@@ -106,6 +116,25 @@ export function TopBar({ filtersData }: TopBarProps) {
                     >
                         <option value="">All Brands</option>
                         {filtersData.brands.slice(0, 80).map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none header-caret" />
+                </div>
+
+                <div className="hidden md:block w-px h-4 header-divider" />
+
+                {/* Segment selector */}
+                <div className="relative hidden lg:flex items-center gap-1.5">
+                    <Users className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--primary)' }} />
+                    <select
+                        value={filters.segment}
+                        onChange={e => setFilter('segment', e.target.value)}
+                        className="filter-select pr-7 w-36"
+                        aria-label="Filter by user segment" title="Filter by user segment"
+                        style={filters.segment ? { color: 'var(--primary)', fontWeight: 600 } : undefined}
+                    >
+                        {SEGMENT_OPTIONS.map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
                     </select>
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none header-caret" />
                 </div>

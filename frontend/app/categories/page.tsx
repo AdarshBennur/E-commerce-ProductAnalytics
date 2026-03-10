@@ -10,6 +10,7 @@ import { InlineChartSkeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { ChartCard, ToggleGroup } from '@/components/ui/ChartCard'
 import { KeyInsightsPanel, type Insight } from '@/components/analytics/KeyInsightsPanel'
 import { Tag, TrendingUp } from 'lucide-react'
+import { useInsights } from '@/lib/use-insights'
 
 const PALETTE = ['#4F46E5', '#2563EB', '#14B8A6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4']
 const AXIS_TICK = { fontSize: 10, fill: '#94A3B8', fontWeight: 500 }
@@ -100,8 +101,14 @@ export default function CategoriesPage() {
         cvr:     c.conversion_rate ?? 0,
     }))
 
-    const tableItems = (rawItems ?? []).slice(0, 20)
-    const insights   = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const tableItems      = (rawItems ?? []).slice(0, 20)
+    const staticInsights  = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const { insights }    = useInsights({
+        startDate:       filters.startDate || undefined,
+        endDate:         filters.endDate   || undefined,
+        segment:         filters.segment   || undefined,
+        staticInsights,
+    })
 
     return (
         <div className="flex gap-5 items-start animate-fade-in">

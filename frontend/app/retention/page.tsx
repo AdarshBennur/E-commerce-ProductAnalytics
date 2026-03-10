@@ -11,6 +11,8 @@ import { KpiCard } from '@/components/ui/KpiCard'
 import { KeyInsightsPanel, type Insight } from '@/components/analytics/KeyInsightsPanel'
 import { MetricTooltip, METRIC_DEFINITIONS } from '@/components/analytics/MetricTooltip'
 import { Users } from 'lucide-react'
+import { useInsights } from '@/lib/use-insights'
+import { useFilters } from '@/lib/filter-context'
 
 const AXIS_TICK = { fontSize: 10, fill: '#94A3B8', fontWeight: 500 }
 
@@ -75,6 +77,7 @@ function buildInsights(data: RetentionData): Insight[] {
 }
 
 export default function RetentionPage() {
+    const { filters }           = useFilters()
     const [data, setData]       = useState<RetentionData | null>(null)
     const [loading, setLoading] = useState(true)
 
@@ -94,7 +97,11 @@ export default function RetentionPage() {
     const w4 = weekAvgs.find(w => w.week_number === 4)?.avg_retention_pct
     const w8 = weekAvgs.find(w => w.week_number === 8)?.avg_retention_pct
 
-    const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const staticInsights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const { insights }   = useInsights({
+        segment:        filters.segment || undefined,
+        staticInsights,
+    })
 
     return (
         <div className="flex gap-5 items-start animate-fade-in">

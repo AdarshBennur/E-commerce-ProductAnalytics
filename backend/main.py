@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from db import assert_no_csv_access, validate_analytics_tables
 from routers import overview, funnel, retention, behavior, categories, revenue, filters
+from routers import insights, recommendations, segments
 
 
 @asynccontextmanager
@@ -61,6 +62,9 @@ app.include_router(behavior.router)
 app.include_router(categories.router)
 app.include_router(revenue.router)
 app.include_router(filters.router)
+app.include_router(insights.router)
+app.include_router(recommendations.router)
+app.include_router(segments.router)
 
 
 @app.get("/api/health")
@@ -81,5 +85,8 @@ def root():
             "/api/categories",
             "/api/revenue",
             "/api/filters",
+            "/api/insights",
+            "/api/recommendations",
+            "/api/segments",
         ],
     }
