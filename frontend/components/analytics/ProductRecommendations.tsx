@@ -38,7 +38,7 @@ function RecommendationCard({ rec }: RecommendationCardProps) {
             <button
                 className="w-full flex items-start gap-3 p-3 text-left"
                 onClick={() => setExpanded(e => !e)}
-                aria-expanded={expanded ? 'true' : 'false'}
+                aria-expanded={expanded}
             >
                 {/* Priority bar */}
                 <div className={`w-1 flex-shrink-0 self-stretch rounded-full mt-0.5 ${cfg.bar}`} />
