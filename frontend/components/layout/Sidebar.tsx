@@ -6,18 +6,33 @@ import {
     LayoutDashboard, TrendingDown, Users,
     Activity, ShoppingBag, DollarSign,
     ChevronLeft, ChevronRight, BarChart3,
+    FlaskConical,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useSidebar } from '@/lib/sidebar-context'
 
-const NAV_ITEMS = [
-    { href: '/overview',   label: 'Overview',    icon: LayoutDashboard },
-    { href: '/funnel',     label: 'Funnel',       icon: TrendingDown },
-    { href: '/retention',  label: 'Retention',    icon: Users },
-    { href: '/behavior',   label: 'Behavior',     icon: Activity },
-    { href: '/categories', label: 'Categories',   icon: ShoppingBag },
-    { href: '/revenue',    label: 'Revenue',      icon: DollarSign },
+const NAV_GROUPS = [
+    {
+        label: 'Dashboards',
+        items: [
+            { href: '/overview',   label: 'Overview',    icon: LayoutDashboard },
+            { href: '/funnel',     label: 'Funnel',       icon: TrendingDown },
+            { href: '/retention',  label: 'Retention',    icon: Users },
+            { href: '/behavior',   label: 'Behavior',     icon: Activity },
+            { href: '/categories', label: 'Categories',   icon: ShoppingBag },
+            { href: '/revenue',    label: 'Revenue',      icon: DollarSign },
+        ],
+    },
+    {
+        label: 'Platform',
+        items: [
+            { href: '/experiments', label: 'Experiments', icon: FlaskConical },
+        ],
+    },
 ]
+
+// Flat list used for collapsed icon-only mode
+const ALL_NAV_ITEMS = NAV_GROUPS.flatMap(g => g.items)
 
 export function Sidebar() {
     const pathname = usePathname()
@@ -53,53 +68,58 @@ export function Sidebar() {
 
             {/* Nav */}
             <nav className={clsx(
-                'flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden',
-                collapsed ? 'px-2' : 'px-3',
+                'flex-1 py-3 overflow-y-auto overflow-x-hidden',
+                collapsed ? 'px-2 space-y-0.5' : 'px-3',
             )}>
-                {!collapsed && (
-                    <p className="px-2.5 mb-2 sidebar-section-label text-[9.5px] font-bold uppercase tracking-[0.12em]">
-                        Dashboards
-                    </p>
-                )}
-
-                {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-                    const active = pathname === href || pathname.startsWith(href + '/')
-
-                    if (collapsed) {
-                        return (
-                            <div key={href} className="relative group">
-                                <Link
-                                    href={href}
-                                    className={clsx(
-                                        'flex items-center justify-center w-full h-9 rounded-lg transition-all duration-150 nav-item',
-                                        active && 'nav-item-active',
-                                    )}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                </Link>
-                                {/* Tooltip */}
-                                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 text-xs font-semibold"
-                                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)', color: 'var(--text-primary)' }}>
-                                    {label}
-                                </div>
-                            </div>
-                        )
-                    }
-
-                    return (
-                        <Link
-                            key={href}
-                            href={href}
-                            className={clsx('nav-item', active && 'nav-item-active')}
-                        >
-                            <Icon className={clsx('nav-item-icon', active && 'text-primary')} />
-                            <span className="truncate">{label}</span>
-                            {active && (
-                                <div className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 sidebar-active-dot" />
-                            )}
-                        </Link>
-                    )
-                })}
+                {collapsed
+                    ? /* ── Collapsed: icon-only flat list ── */
+                      ALL_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+                          const active = pathname === href || pathname.startsWith(href + '/')
+                          return (
+                              <div key={href} className="relative group mb-0.5">
+                                  <Link
+                                      href={href}
+                                      className={clsx(
+                                          'flex items-center justify-center w-full h-9 rounded-lg transition-all duration-150 nav-item',
+                                          active && 'nav-item-active',
+                                      )}
+                                  >
+                                      <Icon className="w-4 h-4" />
+                                  </Link>
+                                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-50 text-xs font-semibold"
+                                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)', color: 'var(--text-primary)' }}>
+                                      {label}
+                                  </div>
+                              </div>
+                          )
+                      })
+                    : /* ── Expanded: grouped with section labels ── */
+                      NAV_GROUPS.map(group => (
+                          <div key={group.label} className="mb-4">
+                              <p className="px-2.5 mb-1.5 sidebar-section-label text-[9.5px] font-bold uppercase tracking-[0.12em]">
+                                  {group.label}
+                              </p>
+                              <div className="space-y-0.5">
+                                  {group.items.map(({ href, label, icon: Icon }) => {
+                                      const active = pathname === href || pathname.startsWith(href + '/')
+                                      return (
+                                          <Link
+                                              key={href}
+                                              href={href}
+                                              className={clsx('nav-item', active && 'nav-item-active')}
+                                          >
+                                              <Icon className={clsx('nav-item-icon', active && 'text-primary')} />
+                                              <span className="truncate">{label}</span>
+                                              {active && (
+                                                  <div className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 sidebar-active-dot" />
+                                              )}
+                                          </Link>
+                                      )
+                                  })}
+                              </div>
+                          </div>
+                      ))
+                }
             </nav>
 
             {/* Footer */}

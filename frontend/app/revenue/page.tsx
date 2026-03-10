@@ -18,6 +18,7 @@ import { MetricTooltip, METRIC_DEFINITIONS } from '@/components/analytics/Metric
 import { DrillDownModal, ModalKpi, ModalStatRow } from '@/components/analytics/DrillDownModal'
 import { SpikeAnnotations, AnnotationLegend } from '@/components/analytics/ChartAnnotations'
 import { computeTrend, detectSpikes, trendLabel, maxPoint, fmtDate } from '@/lib/analytics'
+import { useInsights } from '@/lib/use-insights'
 import { DollarSign, ShoppingCart, Package, Users } from 'lucide-react'
 
 const C = { revenue: '#4F46E5', orders: '#10B981', aov: '#F59E0B' }
@@ -100,7 +101,13 @@ export default function RevenuePage() {
     const kpis    = data?.kpis
     const ts      = data?.timeseries  ?? []
     const cats    = data?.by_category ?? []
-    const insights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const staticInsights = useMemo(() => (data ? buildInsights(data) : []), [data])
+    const { insights }   = useInsights({
+        startDate:       filters.startDate || undefined,
+        endDate:         filters.endDate   || undefined,
+        segment:         filters.segment   || undefined,
+        staticInsights,
+    })
     const revSpikes = useMemo(() => detectSpikes(ts, 'revenue'), [ts])
     const revTrend  = useMemo(() => computeTrend(ts, 'revenue'),  [ts])
     const ordTrend  = useMemo(() => computeTrend(ts, 'orders'),   [ts])

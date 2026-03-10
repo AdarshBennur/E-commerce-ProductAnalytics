@@ -93,4 +93,31 @@ export interface Filters {
     endDate: string
     category: string
     brand: string
+    segment: string
+}
+
+export interface SegmentOption {
+    id:    string
+    label: string
+    description: string
+}
+
+export interface InsightItem {
+    type:        string
+    message:     string
+    severity:    string
+    metric?:     string
+    trend?:      string
+    badge?:      string
+    badge_type?: string
+}
+
+export interface RecommendationItem {
+    id:          string
+    title:       string
+    explanation: string
+    metric_ref:  string
+    priority:    'critical' | 'high' | 'medium' | 'low'
+    category:    string
+    icon:        string
 }

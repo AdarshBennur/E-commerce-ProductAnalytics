@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/overview", tags=["overview"])
 def get_overview(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
+    segment: Optional[str] = Query(None),
 ):
     dau_tbl = table("daily_active_users")
 
@@ -58,4 +59,5 @@ def get_overview(
     return {
         "kpis": kpis[0] if kpis else {},
         "timeseries": timeseries,
+        "segment": segment or "all",
     }

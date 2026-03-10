@@ -14,6 +14,7 @@ const DEFAULT_FILTERS: Filters = {
     endDate: '',
     category: '',
     brand: '',
+    segment: '',
 }
 
 const FilterContext = createContext<FilterContextType | null>(null)
