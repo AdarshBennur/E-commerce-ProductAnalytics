@@ -22,8 +22,8 @@ function buildUrl(path: string, params: QueryParams = {}): string {
 async function fetcher<T>(url: string): Promise<T> {
     const res = await fetch(url, { next: { revalidate: 60 } })
     if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`API ${url} returned ${res.status}: ${text}`)
+        // Never expose raw HTML error bodies (e.g. Render 502 pages) to the UI.
+        throw new Error(`API error ${res.status}`)
     }
     return res.json()
 }

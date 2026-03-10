@@ -209,7 +209,15 @@ def generate_recommendations(
     # ── Rule 4: Repeat buyer revenue concentration ────────────────────────────
     try:
         seg_tbl = table("user_segments")
-        seg_rows = query(f"SELECT * FROM {seg_tbl}")
+        # Aggregate in DuckDB — never pull 56 MB of raw rows into Python
+        seg_rows = query(f"""
+            SELECT
+                segment,
+                COUNT(*) AS user_count
+            FROM {seg_tbl}
+            GROUP BY segment
+            ORDER BY user_count DESC
+        """)
         if seg_rows:
             total_users = sum(_safe(r.get("user_count", 0)) for r in seg_rows)
             # Find high-value segment

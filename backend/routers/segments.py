@@ -19,7 +19,14 @@ SEGMENT_DEFINITIONS = {
 @router.get("")
 def get_segments():
     seg_tbl = table("user_segments")
-    rows = query(f"SELECT * FROM {seg_tbl} ORDER BY user_count DESC")
+    rows = query(f"""
+        SELECT segment, COUNT(*) AS user_count,
+               ROUND(AVG(total_spend), 2)    AS avg_spend,
+               ROUND(AVG(total_sessions), 2) AS avg_sessions
+        FROM {seg_tbl}
+        GROUP BY segment
+        ORDER BY user_count DESC
+    """)
 
     return {
         "segments": [
@@ -41,7 +48,11 @@ def get_segment_profile(segment: Optional[str] = Query(None)):
     dau_tbl = table("daily_active_users")
     rev_tbl = table("revenue_metrics")
 
-    all_segs = query(f"SELECT * FROM {seg_tbl}")
+    all_segs = query(f"""
+        SELECT segment, COUNT(*) AS user_count
+        FROM {seg_tbl}
+        GROUP BY segment
+    """)
     total_users = sum(float(r.get("user_count") or 0) for r in all_segs)
 
     seg_row = None

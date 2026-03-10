@@ -14,9 +14,11 @@ from typing import Optional, Dict, Any
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANALYTICS_DIR = os.path.join(ROOT_DIR, "analytics")
 
-# Memory-safe settings for running on a laptop
-_DUCKDB_THREADS = 2
-_DUCKDB_MEMORY  = "512MB"
+# Memory-safe settings.
+# On Render free tier the entire process is limited to 512 MB.
+# Python + uvicorn + pandas overhead is ~150 MB, so DuckDB gets the rest.
+_DUCKDB_THREADS = 1
+_DUCKDB_MEMORY  = "256MB"
 
 REQUIRED_TABLES = [
     # Core tables — server refuses to start if any are missing

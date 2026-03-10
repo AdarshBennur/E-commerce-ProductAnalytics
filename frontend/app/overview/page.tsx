@@ -143,7 +143,8 @@ export default function OverviewPage() {
     if (error) return (
         <div className="flex items-center justify-center h-64">
             <div className="card text-center px-8 py-10 max-w-sm">
-                <p className="text-slate-400 text-sm">{error}</p>
+                <p className="text-[15px] font-semibold text-slate-700 mb-1">Unable to load data</p>
+                <p className="text-slate-400 text-xs">The backend service may be starting up. Please wait 30 seconds and refresh.</p>
             </div>
         </div>
     )
