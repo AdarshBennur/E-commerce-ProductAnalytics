@@ -87,7 +87,12 @@ export default function BehaviorPage() {
     const [data, setData]       = useState<BehaviorData | null>(null)
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => { fetchBehavior().then(setData).finally(() => setLoading(false)) }, [])
+    useEffect(() => {
+        fetchBehavior()
+            .then(setData)
+            .catch(() => setData(null))
+            .finally(() => setLoading(false))
+    }, [])
 
     const stats    = data?.session_stats
     const segments = data?.user_segments   ?? []

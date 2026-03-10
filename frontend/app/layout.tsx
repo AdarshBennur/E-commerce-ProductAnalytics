@@ -22,10 +22,12 @@ const EMPTY_FILTERS: FiltersData = {
 }
 
 async function loadFilters(): Promise<FiltersData> {
+    // Use BACKEND_URL in production (set on Vercel), fall back to localhost for local dev.
+    const base = process.env.BACKEND_URL ?? 'http://localhost:8000'
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 3000)
     try {
-        const res = await fetch('http://localhost:8000/api/filters', {
+        const res = await fetch(`${base}/api/filters`, {
             signal: controller.signal,
             cache: 'no-store',
         })
