@@ -46,9 +46,20 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
+# ALLOWED_ORIGINS env var lets you add production domains without code changes.
+# Format: comma-separated list, e.g.
+#   ALLOWED_ORIGINS=https://my-app.vercel.app,https://custom-domain.com
+_extra = os.getenv("ALLOWED_ORIGINS", "")
+_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    *[o.strip() for o in _extra.split(",") if o.strip()],
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",   # covers all Vercel preview URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
