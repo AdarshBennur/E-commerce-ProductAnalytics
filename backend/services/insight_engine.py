@@ -14,7 +14,7 @@ All queries are read-only against analytics/*.parquet — no CSV access.
 import math
 import statistics
 from typing import Optional
-from db import query, table
+from db import query_many, table
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -61,17 +61,76 @@ def generate_insights(
     dau_tbl  = table("daily_active_users")
     rev_tbl  = table("revenue_metrics")
     cat_tbl  = table("category_performance")
+    ret_tbl  = table("retention_cohorts")
+    sess_tbl = table("session_metrics")
+
+    # ── Fetch all data in one shared DuckDB connection ─────────────────────────
+    try:
+        results = query_many({
+            "revenue_ts": f"""
+                SELECT event_date::TEXT AS date,
+                       ROUND(SUM(revenue), 2) AS revenue
+                FROM {rev_tbl}
+                {where_clause}
+                GROUP BY event_date
+                ORDER BY event_date
+            """,
+            "cvr_overall": f"""
+                SELECT CASE WHEN SUM(sessions) > 0
+                            THEN ROUND(100.0 * SUM(purchases) / SUM(sessions), 3)
+                            ELSE 0 END AS cvr
+                FROM {dau_tbl}
+                {where_clause}
+            """,
+            "cvr_weekly": f"""
+                SELECT DATE_TRUNC('week', event_date)::TEXT AS week,
+                       CASE WHEN SUM(sessions) > 0
+                            THEN ROUND(100.0 * SUM(purchases) / SUM(sessions), 3)
+                            ELSE 0 END AS cvr
+                FROM {dau_tbl}
+                {where_clause}
+                GROUP BY DATE_TRUNC('week', event_date)
+                ORDER BY week
+            """,
+            "cat_revenue": f"""
+                SELECT category_main AS category,
+                       ROUND(SUM(revenue), 2) AS revenue
+                FROM {rev_tbl}
+                WHERE category_main IS NOT NULL
+                  AND category_main NOT IN ('unknown', '')
+                GROUP BY category_main
+                ORDER BY revenue DESC
+                LIMIT 5
+            """,
+            "dau_ts": f"""
+                SELECT event_date::TEXT AS date, dau
+                FROM {dau_tbl}
+                {where_clause}
+                ORDER BY event_date
+            """,
+            "retention": f"""
+                SELECT week_number,
+                       ROUND(AVG(retention_pct), 2) AS avg_ret
+                FROM {ret_tbl}
+                WHERE week_number IN (1, 2, 4, 8)
+                GROUP BY week_number
+                ORDER BY week_number
+            """,
+            "sessions": f"""
+                SELECT AVG(views_per_session)             AS avg_views,
+                       AVG(events_per_session)            AS avg_events,
+                       SUM(has_purchase)                  AS buyers,
+                       COUNT(*)                           AS total
+                FROM {sess_tbl}
+                LIMIT 50000
+            """,
+        })
+    except Exception:
+        return []
 
     # ── 1. Revenue spike / drop detection ─────────────────────────────────────
     try:
-        rev_rows = query(f"""
-            SELECT event_date::TEXT AS date,
-                   ROUND(SUM(revenue), 2) AS revenue
-            FROM {rev_tbl}
-            {where_clause}
-            GROUP BY event_date
-            ORDER BY event_date
-        """)
+        rev_rows = results.get("revenue_ts", [])
         if len(rev_rows) >= 7:
             revenues   = [_safe(r["revenue"]) for r in rev_rows]
             rolling_7  = [statistics.mean(revenues[max(0, i-6):i+1]) for i in range(len(revenues))]
@@ -125,28 +184,10 @@ def generate_insights(
 
     # ── 2. Conversion rate health ──────────────────────────────────────────────
     try:
-        cvr_rows = query(f"""
-            SELECT
-                CASE WHEN SUM(sessions) > 0
-                     THEN ROUND(100.0 * SUM(purchases) / SUM(sessions), 3)
-                     ELSE 0 END AS cvr
-            FROM {dau_tbl}
-            {where_clause}
-        """)
+        cvr_rows    = results.get("cvr_overall", [])
         cvr_overall = _safe(cvr_rows[0]["cvr"]) if cvr_rows else 0
+        cvr_weekly  = results.get("cvr_weekly", [])
 
-        # Compare week-over-week
-        cvr_weekly = query(f"""
-            SELECT
-                DATE_TRUNC('week', event_date)::TEXT AS week,
-                CASE WHEN SUM(sessions) > 0
-                     THEN ROUND(100.0 * SUM(purchases) / SUM(sessions), 3)
-                     ELSE 0 END AS cvr
-            FROM {dau_tbl}
-            {where_clause}
-            GROUP BY DATE_TRUNC('week', event_date)
-            ORDER BY week
-        """)
         if len(cvr_weekly) >= 2:
             prev_cvr = _safe(cvr_weekly[-2]["cvr"])
             curr_cvr = _safe(cvr_weekly[-1]["cvr"])
@@ -189,17 +230,7 @@ def generate_insights(
 
     # ── 3. Category revenue concentration ─────────────────────────────────────
     try:
-        cat_rows = query(f"""
-            SELECT
-                category_main AS category,
-                ROUND(SUM(revenue), 2) AS revenue
-            FROM {rev_tbl}
-            WHERE category_main IS NOT NULL
-              AND category_main NOT IN ('unknown', '')
-            GROUP BY category_main
-            ORDER BY revenue DESC
-            LIMIT 5
-        """)
+        cat_rows = results.get("cat_revenue", [])
         if cat_rows:
             total_rev = sum(_safe(r["revenue"]) for r in cat_rows)
             top_cat   = cat_rows[0]
@@ -231,16 +262,10 @@ def generate_insights(
 
     # ── 4. DAU / traffic anomaly ───────────────────────────────────────────────
     try:
-        dau_rows = query(f"""
-            SELECT event_date::TEXT AS date, dau
-            FROM {dau_tbl}
-            {where_clause}
-            ORDER BY event_date
-        """)
+        dau_rows = results.get("dau_ts", [])
         if len(dau_rows) >= 7:
             dau_vals = [_safe(r["dau"]) for r in dau_rows]
             last_dau = dau_vals[-1]
-            avg_dau  = statistics.mean(dau_vals[:-1])
             z        = _zscore(last_dau, dau_vals[:-1])
 
             if z >= 2.0:
@@ -270,15 +295,7 @@ def generate_insights(
 
     # ── 5. Retention signal ────────────────────────────────────────────────────
     try:
-        ret_tbl = table("retention_cohorts")
-        ret_rows = query(f"""
-            SELECT week_number,
-                   ROUND(AVG(retention_pct), 2) AS avg_ret
-            FROM {ret_tbl}
-            WHERE week_number IN (1, 2, 4, 8)
-            GROUP BY week_number
-            ORDER BY week_number
-        """)
+        ret_rows = results.get("retention", [])
         if ret_rows:
             w1 = next((r for r in ret_rows if r["week_number"] == 1), None)
             w4 = next((r for r in ret_rows if r["week_number"] == 4), None)
@@ -313,16 +330,7 @@ def generate_insights(
 
     # ── 6. Session engagement ──────────────────────────────────────────────────
     try:
-        sess_tbl = table("session_metrics")
-        sess_rows = query(f"""
-            SELECT
-                AVG(views_per_session)    AS avg_views,
-                AVG(events_per_session)   AS avg_events,
-                SUM(has_purchase)         AS buyers,
-                COUNT(*)                  AS total
-            FROM {sess_tbl}
-            LIMIT 500000
-        """)
+        sess_rows = results.get("sessions", [])
         if sess_rows:
             avg_views  = _safe(sess_rows[0]["avg_views"])
             avg_events = _safe(sess_rows[0]["avg_events"])

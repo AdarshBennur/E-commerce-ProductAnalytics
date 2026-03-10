@@ -183,6 +183,27 @@ def query(sql: str, params: Optional[Dict[str, Any]] = None) -> list[dict]:
         con.close()
 
 
+def query_many(queries: dict[str, str]) -> dict[str, list[dict]]:
+    """Run multiple named SQL queries on a single shared DuckDB connection.
+
+    This is significantly faster than calling query() N times when you need
+    several reads in one request, because DuckDB connection setup is amortised
+    across all queries.
+
+    Usage:
+        results = query_many({"funnel": sql1, "cats": sql2})
+        funnel_rows = results["funnel"]
+    """
+    con = _new_con()
+    try:
+        return {
+            name: _clean(con.execute(sql).fetchdf().to_dict(orient="records"))
+            for name, sql in queries.items()
+        }
+    finally:
+        con.close()
+
+
 def query_df(sql: str):
     """Return a pandas DataFrame."""
     con = _new_con()
