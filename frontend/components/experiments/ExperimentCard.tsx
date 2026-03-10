@@ -51,7 +51,7 @@ export function ExperimentCard({ experiment, onClick }: ExperimentCardProps) {
                 onClick && 'cursor-pointer hover:shadow-hover hover:-translate-y-[1px]',
             )}
             onClick={onClick}
-            role={onClick ? 'button' : undefined}
+            role="article"
             tabIndex={onClick ? 0 : undefined}
             onKeyDown={onClick ? e => e.key === 'Enter' && onClick() : undefined}
         >
@@ -107,7 +107,7 @@ export function ExperimentCard({ experiment, onClick }: ExperimentCardProps) {
                                     'h-full rounded-full transition-all duration-500',
                                     v.isWinner ? 'bg-amber-400' : v.isControl ? 'bg-indigo-300' : 'bg-indigo-500',
                                 )}
-                                style={{ width: `${Math.min(v.conversion * 20, 100)}%` }}
+                                style={{ width: `${Math.min(v.conversion * 20, 100)}%` }} // dynamic data-driven width
                             />
                         </div>
                         <span className={clsx(
@@ -132,7 +132,7 @@ export function ExperimentCard({ experiment, onClick }: ExperimentCardProps) {
                                 : experiment.confidence >= 80 ? 'bg-amber-400'
                                 : 'bg-slate-300',
                             )}
-                            style={{ width: `${experiment.confidence}%` }}
+                            style={{ width: `${experiment.confidence}%` }} // dynamic data-driven width
                         />
                     </div>
                     <span className={clsx(
