@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Ensure backend directory is on the Python path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from db import assert_no_csv_access, validate_analytics_tables
+from db import assert_no_csv_access, validate_analytics_tables, ANALYTICS_DIR, get_table_path
 from routers import overview, funnel, retention, behavior, categories, revenue, filters
 from routers import insights, recommendations, segments
 
@@ -100,4 +100,20 @@ def root():
             "/api/recommendations",
             "/api/segments",
         ],
+    }
+
+
+# ── Temporary debug endpoint — will be removed after diagnostics ─────────────
+@app.get("/api/_debug/paths")
+def debug_paths():
+    import glob as _glob
+    files = _glob.glob(os.path.join(ANALYTICS_DIR, "*.parquet"))
+    return {
+        "analytics_dir": ANALYTICS_DIR,
+        "analytics_dir_exists": os.path.exists(ANALYTICS_DIR),
+        "session_summary_path": get_table_path("session_summary"),
+        "session_summary_exists": os.path.exists(get_table_path("session_summary")),
+        "session_metrics_exists": os.path.exists(get_table_path("session_metrics")),
+        "parquet_files_found": sorted([os.path.basename(f) for f in files]),
+        "cwd": os.getcwd(),
     }

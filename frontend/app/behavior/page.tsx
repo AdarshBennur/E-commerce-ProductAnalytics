@@ -89,8 +89,18 @@ export default function BehaviorPage() {
 
     useEffect(() => {
         fetchBehavior()
-            .then(setData)
-            .catch(() => setData(null))
+            .then((d) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7640/ingest/2a5f8334-0b38-41c5-8299-5556b08837c1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0dffb0'},body:JSON.stringify({sessionId:'0dffb0',location:'behavior/page.tsx:fetchBehavior.then',message:'API response received',data:{session_stats_keys:d?.session_stats?Object.keys(d.session_stats):[],session_stats_empty:!d?.session_stats||Object.keys(d.session_stats).length===0,sessions_distribution_len:d?.sessions_distribution?.length??0,hourly_len:d?.hourly_patterns?.length??0,segments_len:d?.user_segments?.length??0},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion agent log
+                setData(d)
+            })
+            .catch((err) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7640/ingest/2a5f8334-0b38-41c5-8299-5556b08837c1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0dffb0'},body:JSON.stringify({sessionId:'0dffb0',location:'behavior/page.tsx:fetchBehavior.catch',message:'API call failed',data:{error:String(err)},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion agent log
+                setData(null)
+            })
             .finally(() => setLoading(false))
     }, [])
 
