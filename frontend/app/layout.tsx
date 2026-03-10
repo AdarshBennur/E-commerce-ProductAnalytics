@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 import { FilterProvider } from '@/lib/filter-context'
 import { SidebarProvider } from '@/lib/sidebar-context'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -57,6 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         </div>
                     </SidebarProvider>
                 </FilterProvider>
+                <Analytics />
             </body>
         </html>
     )
